@@ -1,170 +1,106 @@
-# Adapted from https://docs.streamlit.io/knowledge-base/tutorials/build-conversational-apps#build-a-simple-chatbot-gui-with-streaming
-import os
-
-import base64
-import gc
-import random
-import tempfile
-import time
-import uuid
-
-from IPython.display import Markdown, display
-
-from llama_index.core import Settings
-from llama_index.llms.ollama import Ollama
-from llama_index.core import PromptTemplate
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core import VectorStoreIndex, ServiceContext, SimpleDirectoryReader
-
+# importing dependencies
+from dotenv import load_dotenv
 import streamlit as st
+from PyPDF2 import PdfReader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import faiss
+from langchain.prompts import PromptTemplate
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationalRetrievalChain
+from langchain.chat_models import ChatOpenAI
+from htmlTemplates import css, bot_template, user_template
 
-if "id" not in st.session_state:
-    st.session_state.id = uuid.uuid4()
-    st.session_state.file_cache = {}
+# creating custom template to guide llm model
+custom_template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Standalone question:"""
 
-session_id = st.session_state.id
-client = None
+CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
+
+# extracting text from pdf
+def get_pdf_text(docs):
+    text=""
+    for pdf in docs:
+        pdf_reader=PdfReader(pdf)
+        for page in pdf_reader.pages:
+            text+=page.extract_text()
+    return text
+
+# converting text to chunks
+def get_chunks(raw_text):
+    text_splitter=CharacterTextSplitter(separator="\n",
+                                        chunk_size=1000,
+                                        chunk_overlap=200,
+                                        length_function=len)   
+    chunks=text_splitter.split_text(raw_text)
+    return chunks
+
+# using all-MiniLm embeddings model and faiss to get vectorstore
+def get_vectorstore(chunks):
+    embeddings=HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
+                                     model_kwargs={'device':'cpu'})
+    vectorstore=faiss.FAISS.from_texts(texts=chunks,embedding=embeddings)
+    return vectorstore
+
+# generating conversation chain  
+def get_conversationchain(vectorstore):
+    llm=ChatOpenAI(temperature=0.2)
+    memory = ConversationBufferMemory(memory_key='chat_history', 
+                                      return_messages=True,
+                                      output_key='answer') # using conversation buffer memory to hold past information
+    conversation_chain = ConversationalRetrievalChain.from_llm(
+                                llm=llm,
+                                retriever=vectorstore.as_retriever(),
+                                condense_question_prompt=CUSTOM_QUESTION_PROMPT,
+                                memory=memory)
+    return conversation_chain
+
+# generating response from user queries and displaying them accordingly
+def handle_question(question):
+    response=st.session_state.conversation({'question': question})
+    st.session_state.chat_history=response["chat_history"]
+    for i,msg in enumerate(st.session_state.chat_history):
+        if i%2==0:
+            st.write(user_template.replace("{{MSG}}",msg.content,),unsafe_allow_html=True)
+        else:
+            st.write(bot_template.replace("{{MSG}}",msg.content),unsafe_allow_html=True)
 
 
+def main():
+    load_dotenv()
+    st.set_page_config(page_title="Chat with multiple PDFs",page_icon=":books:")
+    st.write(css,unsafe_allow_html=True)
+    if "conversation" not in st.session_state:
+        st.session_state.conversation=None
 
-@st.cache_resource
-def load_llm():
-    llm = Ollama(model="llama3.3", request_timeout=120.0)
-    return llm
-
-def reset_chat():
-    st.session_state.messages = []
-    st.session_state.context = None
-    gc.collect()
-
-
-def display_pdf(file):
-    # Opening file from file path
-
-    st.markdown("### PDF Preview")
-    base64_pdf = base64.b64encode(file.read()).decode("utf-8")
-
-    # Embedding PDF in HTML
-    pdf_display = f"""<iframe src="data:application/pdf;base64,{base64_pdf}" width="400" height="100%" type="application/pdf"
-                        style="height:100vh; width:100%"
-                    >
-                    </iframe>"""
-
-    # Displaying File
-    st.markdown(pdf_display, unsafe_allow_html=True)
-
-
-with st.sidebar:
-    st.header(f"Add your documents!")
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history=None
     
-    uploaded_file = st.file_uploader("Choose your `.pdf` file", type="pdf")
-
-    if uploaded_file:
-        try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                file_path = os.path.join(temp_dir, uploaded_file.name)
+    st.header("Chat with multiple PDFs :books:")
+    question=st.text_input("Ask question from your document:")
+    if question:
+        handle_question(question)
+    with st.sidebar:
+        st.subheader("Your documents")
+        docs=st.file_uploader("Upload your PDF here and click on 'Process'",accept_multiple_files=True)
+        if st.button("Process"):
+            with st.spinner("Processing"):
                 
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getvalue())
+                #get the pdf
+                raw_text=get_pdf_text(docs)
                 
-                file_key = f"{session_id}-{uploaded_file.name}"
-                st.write("Indexing your document...")
-
-                if file_key not in st.session_state.get('file_cache', {}):
-
-                    if os.path.exists(temp_dir):
-                            loader = SimpleDirectoryReader(
-                                input_dir = temp_dir,
-                                required_exts=[".pdf"],
-                                recursive=True
-                            )
-                    else:    
-                        st.error('Could not find the file you uploaded, please check again...')
-                        st.stop()
-                    
-                    docs = loader.load_data()
-
-                    # setup llm & embedding model
-                    llm=load_llm()
-                    embed_model = HuggingFaceEmbedding( model_name="BAAI/bge-large-en-v1.5", trust_remote_code=True)
-                    # Creating an index over loaded data
-                    Settings.embed_model = embed_model
-                    index = VectorStoreIndex.from_documents(docs, show_progress=True)
-
-                    # Create the query engine, where we use a cohere reranker on the fetched nodes
-                    Settings.llm = llm
-                    query_engine = index.as_query_engine(streaming=True)
-
-                    # ====== Customise prompt template ======
-                    qa_prompt_tmpl_str = (
-                    "Context information is below.\n"
-                    "---------------------\n"
-                    "{context_str}\n"
-                    "---------------------\n"
-                    "Given the context information above I want you to think step by step to answer the query in a crisp manner, incase case you don't know the answer say 'I don't know!'.\n"
-                    "Query: {query_str}\n"
-                    "Answer: "
-                    )
-                    qa_prompt_tmpl = PromptTemplate(qa_prompt_tmpl_str)
-
-                    query_engine.update_prompts(
-                        {"response_synthesizer:text_qa_template": qa_prompt_tmpl}
-                    )
-                    
-                    st.session_state.file_cache[file_key] = query_engine
-                else:
-                    query_engine = st.session_state.file_cache[file_key]
-
-                # Inform the user that the file is processed and Display the PDF uploaded
-                st.success("Ready to Chat!")
-                display_pdf(uploaded_file)
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-            st.stop()     
-
-col1, col2 = st.columns([6, 1])
-
-with col1:
-    st.header(f"Chat with Docs using Llama-3.3")
-
-with col2:
-    st.button("Clear ↺", on_click=reset_chat)
-
-# Initialize chat history
-if "messages" not in st.session_state:
-    reset_chat()
+                #get the text chunks
+                text_chunks=get_chunks(raw_text)
+                
+                #create vectorstore
+                vectorstore=get_vectorstore(text_chunks)
+                
+                #create conversation chain
+                st.session_state.conversation=get_conversationchain(vectorstore)
 
 
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-
-# Accept user input
-if prompt := st.chat_input("What's up?"):
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    # Display user message in chat message container
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Display assistant response in chat message container
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        
-        # Simulate stream of response with milliseconds delay
-        streaming_response = query_engine.query(prompt)
-        
-        for chunk in streaming_response.response_gen:
-            full_response += chunk
-            message_placeholder.markdown(full_response + "▌")
-
-        # full_response = query_engine.query(prompt)
-
-        message_placeholder.markdown(full_response)
-        # st.session_state.context = ctx
-
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+if __name__ == '__main__':
+    main()
