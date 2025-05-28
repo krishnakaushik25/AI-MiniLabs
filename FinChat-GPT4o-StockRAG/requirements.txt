@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+streamlit
+requests
+pandas
+python-dotenv
+langchain
+langchain_openai
+langgraph
+finnhub-python
+altair
