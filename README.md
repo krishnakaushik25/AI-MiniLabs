@@ -96,6 +96,16 @@ Full eKYC pipeline combining OCR, computer vision, and LLM reasoning to extract 
 
 ---
 
+
+### 📄 SmartQuizBuilder_AI
+AI-powered tool that generates quizzes from uploaded PDFs using Google Vertex AI and Streamlit.
+
+
+### ⚙️ ML-CICD-Pipeline
+CI/CD pipeline for machine learning with GitHub Actions—automated training, evaluation, and Hugging Face deployment.
+**Architecture**  
+![Demo](ML-CICD-Pipeline/CICD-pipeline.png)
+
 ## 🛠️ Installation
 
 1. Clone the repository:
