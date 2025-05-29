@@ -46,7 +46,7 @@ A lightweight ChatGPT-like experience using LLaMA 3.2 Vision—runs entirely off
 A long-context document Q&A system using ModernBERT for efficient retrieval and classification.
 
 **Architecture**  
-![Demo](ModernBERT-RAG/rag_on_docs.gif)
+![Demo](modernbert-rag/rag_on_docs.gif)
 
 ---
 
