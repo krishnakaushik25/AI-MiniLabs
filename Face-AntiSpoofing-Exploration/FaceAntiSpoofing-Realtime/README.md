@@ -1,24 +1,8 @@
 <h1 align="center">Realtime Face Anti-Spoofing Detection :robot:</h1>
 
-![](https://komarev.com/ghpvc/?username=Prem95&style=flat-square&label=Views)
-![Python](https://img.shields.io/badge/Python-3.8-blue.svg)
-![Ubuntu](https://img.shields.io/badge/Ubuntu-20.04-blue.svg)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.0+-blue.svg)
-[![Forks](https://img.shields.io/github/forks/Prem95/face-liveness-detector.svg?logo=github)](https://github.com/Prem95/face-liveness-detector/network/members)
-[![Stargazers](https://img.shields.io/github/stars/Prem95/face-liveness-detector.svg?logo=github)](https://github.com/Prem95/face-liveness-detector/stargazers)
-[![contributions welcome](https://img.shields.io/badge/Contributions-Welcome-green.svg?style=flat)](https://github.com/Prem95/face-liveness-detector/issues)
-
-<div align= "center"><img src="https://github.com/Prem95/face-liveness-detector/blob/main/misc/demo.gif" width="600" height="550"/></div>
-
-
-<h3> Contact premstroke95@gmail.com to request the sample model file and utility folder</h3>
-
 ## Changelog
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
-
-## [1.0] - 28/12/2021
-- First commit
 
 
 ## Why Build This? :thinking:
@@ -82,9 +66,3 @@ Feel free to **file a new issue** with a respective title and description on the
 
 Please also submit a pull request for any issues that might appear or any enhancements/features that could make this project perform better. **I would love to review your pull request**!
 
-## Code of Conduct :+1:
-
-You can find our Code of Conduct [here](/CODE_OF_CONDUCT.md).
-
-## License :+1:
-All rights reserved according to MIT © [Prem Kumar](https://github.com/Prem95/face-liveness-detector/blob/master/LICENSE)
