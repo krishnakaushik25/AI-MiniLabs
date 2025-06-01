@@ -58,9 +58,7 @@ Run the following command in your terminal
 $ python3 main.py
 ```
 
-## Contribution :zap:
 
-Feel free to **file a new issue** with a respective title and description on the the [face-liveness-detector](https://github.com/Prem95/face-liveness-detector/issues) repository.
 
 ## Feature Request :zap:
 
