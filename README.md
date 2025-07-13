@@ -12,7 +12,7 @@ A curated collection of experimental AI mini-projects exploring the latest in la
 A Retrieval‑Augmented Generation (RAG) system enhanced by a deterministic multi-step agent architecture—essentially, a brain modeled as a graph that dynamically plans, retrieves, verifies, and synthesizes based on user question
 
 **Architecture**  
-![Demo](Interactive-Knowledge-Agent/final_graph_schema.jpeg)
+![Demo](Interactive-Knowledge-Agent-main/final_graph_schema.jpeg)
 
 
 ### 🔊 Voicebot-RealTime-LLM
